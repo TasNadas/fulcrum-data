@@ -356,6 +356,79 @@ def update_to_visit(form_id, headers, fulcrum, streets):
         # except:
         #     print row['form_values'][fields['street_address']] + " missing residents"
 
+def create_hourly_projects(form_id, headers, fulcrum, streets, project_id):
+    fields = {}
+    new_project = {}
+    wrapper = {}
+    count = 0
+    num_streets = len(streets)
+    found_street = {}
+    found_street['name'] = 'default'
+    project_found = False
+
+
+    def getFields(data):
+        if "elements" in data:
+            for e in data["elements"]:
+                getFields(e)
+                fields[e['data_name']] = e['key']
+
+    form_fields = GetData('/api/v2/forms/' + form_id, headers)
+    getFields(form_fields['form'])
+
+    records = fulcrum.records.search(url_params={'form_id': form_id})
+    for timed_street in streets:
+        found_street['name'] = 'default'
+        for row in records['records']:
+            update = False
+            update_record = row
+
+            try:
+                form_street = row['form_values'][fields['street_address']]
+                try:
+                    form_street = form_street.split(" ")[1]
+                except:
+                    form_street = ""
+            except:
+                form_street = ""
+            if form_street == timed_street and row['project_id'] == project_id:
+               update = True
+            if update == True:
+                # Check and see if this project has already been created, if not, create it
+                new_project['name'] = 'Hour ' + str(count)
+                try:
+                    found_street = fulcrum.projects.search(url_params={'name': new_project['name']})
+                except:
+                    found_street['name'] = 'Does not exist'
+                print found_street
+                project_found = False
+                project_count_num = 0
+                for project_count in found_street:
+                #if found_street[int(project_count)]['name'] == 'Does not exist' or found_street['name'] == 'default':
+                    if found_street['projects'][project_count_num]['name'] == new_project['name']:
+                        project_found = True
+                    project_count_num += 1
+
+                if project_found == True:
+                    update_record['project_id'] = found_street['projects'][project_count_num - 1]['id']
+                else:
+                # Create a new project
+                    wrapper['project'] = new_project
+                    updated_project = fulcrum.projects.create(wrapper)
+                    print "updated_project ", "is ", updated_project
+                    update_record['project_id'] = updated_project['project']['id']
+                #     # Create a new project
+                #     wrapper['project'] = new_project
+                #     updated_project = fulcrum.projects.create(wrapper)
+                #     update_record['project_id'] = updated_project['project_id']
+                # else:
+                #     update_record['project_id'] = found_street['project_id']
+                fulcrum.records.update(row[u'id'], update_record)
+        # Increment the count when all residences on this street have been assigned a new project
+        count += 1
+        print count
+
+
 
 
 
@@ -524,7 +597,7 @@ if __name__ == '__main__':
     # only contains residences where:
     # A resident voted in 2016, 2015, or 2014
     # The residence is not an apartment
-    filter_all_residents(form_id, headers, fulcrum)
+#    filter_all_residents(form_id, headers, fulcrum)
 
     print "Updated Delaware project"
 
@@ -566,9 +639,87 @@ if __name__ == '__main__':
 
     print streets_time_sorted
 
-    update_to_visit(form_id, headers, fulcrum, streets_time_sorted)
+    #update_to_visit(form_id, headers, fulcrum, streets_time_sorted)
+    create_hourly_projects(form_id, headers, fulcrum, streets_time_sorted, filtered_project_id)
 
     print "Updated To Visit Project"
+
+    # fields = {}
+    # new_project = {}
+    # wrapper = {}
+    # count = 0
+    # num_streets = 10
+    # found_street = {}
+    # found_street['name'] = 'default'
+    # project_found = False
+    #
+    #
+    # def getFields(data):
+    #     if "elements" in data:
+    #         for e in data["elements"]:
+    #             getFields(e)
+    #             fields[e['data_name']] = e['key']
+    #
+    #
+    # form_fields = GetData('/api/v2/forms/' + form_id, headers)
+    # getFields(form_fields['form'])
+    #
+    # records = fulcrum.records.search(url_params={'form_id': form_id})
+    #
+    # street_times.append('BELLFIELD')
+    # street_times.append('DELAWARE')
+    # for timed_street in street_times:
+    #     found_street['name'] = 'default'
+    #     for row in records['records']:
+    #         update = False
+    #         update_record = row
+    #
+    #         try:
+    #             form_street = row['form_values'][fields['street_address']]
+    #             try:
+    #                 form_street = form_street.split(" ")[1]
+    #             except:
+    #                 form_street = ""
+    #         except:
+    #             form_street = ""
+    #         if form_street == timed_street and row['project_id'] == filtered_project_id:
+    #             update = True
+    #         if update == True:
+    #             # Check and see if this project has already been created, if not, create it
+    #             new_project['name'] = 'Hour ' + str(count)
+    #             try:
+    #                 found_street = fulcrum.projects.search(url_params={'name': new_project['name']})
+    #             except:
+    #                 found_street['name'] = 'Does not exist'
+    #             print found_street
+    #             project_found = False
+    #             project_count_num = 0
+    #             for project_count in found_street:
+    #                 # if found_street[int(project_count)]['name'] == 'Does not exist' or found_street['name'] == 'default':
+    #                 if found_street['projects'][project_count_num]['name'] == new_project['name']:
+    #                     project_found = True
+    #                 project_count_num += 1
+    #
+    #             if project_found == True:
+    #                 print update_record
+    #                 print found_street
+    #                 update_record['project_id'] = found_street['projects'][project_count_num - 1]['id']
+    #             else:
+    #                 # Create a new project
+    #                 wrapper['project'] = new_project
+    #                 updated_project = fulcrum.projects.create(wrapper)
+    #                 print updated_project
+    #                 print update_record
+    #                 update_record['project_id'] = updated_project['id']
+    #             # # Create a new project
+    #             #     wrapper['project'] = new_project
+    #             #     updated_project = fulcrum.projects.create(wrapper)
+    #             #     update_record['project_id'] = updated_project['project_id']
+    #             # else:
+    #             #     update_record['project_id'] = found_street['project_id']
+    #             fulcrum.records.update(row[u'id'], update_record)
+    #     # Increment the count when all residences on this street have been assigned a new project
+    #     count += 1
 
 
 

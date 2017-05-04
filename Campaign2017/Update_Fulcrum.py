@@ -206,7 +206,7 @@ def exporttocsv(tbl):
 if __name__ == '__main__':
     full_path = sys.argv[0]
 
-    api_key = os.environ['FULCRUM_API_KEY']
+    api_key = os.environ['FULCRUM_API_KEY']*
 
     fulcrum = Fulcrum(key=api_key)
 
